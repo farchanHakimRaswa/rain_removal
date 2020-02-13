@@ -145,7 +145,7 @@ if __name__ == '__main__':
         for j in range(start_point, iterations):   # iterations
             
             _,Training_Loss = sess.run([g_optim,loss]) # training
-      
+            print('[CHECK POINT ' + str(j))
             if np.mod(j+1,100) == 0 and j != 0: # save the model every 100 iterations    
                end = time.time()
                print ('%d / %d iteraions, Training Loss  = %.4f, runtime = %.1f s' % (j+1, iterations, Training_Loss, (end - start)))         
