@@ -18,7 +18,7 @@ from GuidedFilter import guided_filter
 
 
 ##################### Select GPU device ####################################
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 ############################################################################
 
 tf.reset_default_graph()
@@ -30,12 +30,12 @@ patch_size = 64              # patch size
 learning_rate = 1e-3         # learning rate
 iterations = int(2e5)        # iterations
 batch_size = 10              # batch size
-save_model_path = "./model/" # saved model's path
+save_model_path = "/content/rain_removal/model/" # saved model's path
 model_name = 'model-iter'   # saved model's name
 ############################################################################
 
-input_path = "./TrainData/input/"    # the path of training data
-gt_path = "./TrainData/label/"       # the path of training label
+input_path = "/content/rain_removal/TrainData/input/"    # the path of training data
+gt_path = "/content/rain_removal/TrainData/label/"       # the path of training label
 
 
 
