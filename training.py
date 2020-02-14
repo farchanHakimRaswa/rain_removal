@@ -17,7 +17,7 @@ from GuidedFilter import guided_filter
 
 
 ##################### Select GPU device ####################################
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 ############################################################################
 
 tf.reset_default_graph()
@@ -28,10 +28,10 @@ num_channels = 3             # number of input's channels
 patch_size = 64              # patch size 
 KernelSize = 3               # kernel size 
 learning_rate = 0.1          # learning rate
-iterations = int(2.1*1e5)    # iterations
+iterations = 10000   # iterations
 batch_size = 20              # batch size
 save_model_path = "/content/rain_removal/model/" # saved model's path
-model_name = 'model-epoch'   # saved model's name
+model_name = 'model'   # saved model's name
 ############################################################################
 
 
