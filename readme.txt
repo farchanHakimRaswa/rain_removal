@@ -1,7 +1,6 @@
-This is a re-implementation of our paper [1] and for non-commercial use only. 
+This is a re-implementation of our CVPR paper [1] and for non-commercial use only. You need to install Python with Tensorflow-GPU to run this code.
 
-You need to install Python with Tensorflow-GPU to run this code.
-
+Install Tensorflow£º https://www.tensorflow.org/install/
 
 
 Usage:
@@ -21,10 +20,9 @@ We release our rainy image dataset at:  https://xueyangfu.github.io/projects/cvp
 
 If this code and dataset help your research, please cite our related papers:
 
-[1] X. Fu, J. Huang, X. Ding, Y. Liao and J. Paisley. ¡°Clearing the Skies: A deep network architecture for single-image rain removal¡±, IEEE Transactions on Image Processing, 2017.
+[1] X. Fu, J. Huang, D. Zeng, Y. Huang, X. Ding and J. Paisley. ¡°Removing Rain from Single Images via a Deep Detail Network¡±, CVPR, 2017.
 
-[2] X. Fu, J. Huang, D. Zeng, Y. Huang, X. Ding and J. Paisley. ¡°Removing Rain from Single Images via a Deep Detail Network¡±, CVPR, 2017.
-
+[2] X. Fu, J. Huang, X. Ding, Y. Liao and J. Paisley. ¡°Clearing the Skies: A deep network architecture for single-image rain removal¡±, IEEE Transactions on Image Processing, 2017.
 
 
 Welcome to our homepage:   https://xmu-smartdsp.github.io/

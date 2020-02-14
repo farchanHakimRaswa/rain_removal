@@ -1,24 +1,24 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python2
-
+# -*- coding: utf-8 -*-
 
 
 # This is a re-implementation of testing code of this paper:
-# X. Fu, J. Huang, X. Ding, Y. Liao and J. Paisley. “Clearing the Skies: A deep network architecture for single-image rain removal”, 
-# IEEE Transactions on Image Processing, vol. 26, no. 6, pp. 2944-2956, 2017.
+# X. Fu, J. Huang, D. Zeng, Y. Huang, X. Ding and J. Paisley. “Removing Rain from Single Images via a Deep Detail Network”, CVPR, 2017.
 # author: Xueyang Fu (fxy@stu.xmu.edu.cn)
+
+
 
 import os
 import skimage
 import numpy as np
 import tensorflow as tf
+import training as Network
 import matplotlib.pyplot as plt
 
-import training
 
-##################### Select GPU device ####################################
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
-############################################################################
+
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"  # select GPU device
+
 
 tf.reset_default_graph()
 
@@ -28,6 +28,7 @@ pre_trained_model_path = './model/trained/model'
 
 img_path = './TestData/input/' # the path of testing images
 results_path = './TestData/results/' # the path of de-rained images
+
 
 
 def _parse_function(filename):   
@@ -53,22 +54,19 @@ if __name__ == '__main__':
    dataset = dataset.batch(batch_size=1).repeat()  
    iterator = dataset.make_one_shot_iterator()
    
-   rain = iterator.get_next()  
-   rain_pad = tf.pad(rain,[[0,0],[10,10],[10,10],[0,0]],"SYMMETRIC")  
-   
-   detail, base = training.inference(rain_pad)
-   
-   detail = detail[:,6:tf.shape(detail)[1]-6, 6:tf.shape(detail)[2]-6, :] 
-   base = base[:,10:tf.shape(base)[1]-10, 10:tf.shape(base)[2]-10, :] 
-   
-   output = tf.clip_by_value(base + detail, 0., 1.)
+   rain = iterator.get_next() 
+
+
+   output = Network.inference(rain, is_training = False)
+   output = tf.clip_by_value(output, 0., 1.)
    output = output[0,:,:,:]
 
    config = tf.ConfigProto()
    config.gpu_options.allow_growth=True   
    saver = tf.train.Saver()
-   
-   with tf.Session(config=config) as sess:
+
+
+   with tf.Session(config=config) as sess: 
       with tf.device('/gpu:0'): 
           if tf.train.get_checkpoint_state(model_path):  
               ckpt = tf.train.latest_checkpoint(model_path)  # try your own model 
@@ -80,10 +78,10 @@ if __name__ == '__main__':
 
           for i in range(num_img):     
              derained, ori = sess.run([output, rain])              
-             derained = np.uint8(derained * 255.)
+             derained = np.uint8(derained* 255.)
              index = imgName[i].rfind('.')
              name = imgName[i][:index]
-             skimage.io.imsave(results_path + name +'.png', derained)         
+            #  skimage.io.imsave(results_path + name +'.png', derained)         
              print('%d / %d images processed' % (i+1,num_img))
               
       print('All done')
@@ -95,4 +93,4 @@ if __name__ == '__main__':
    plt.subplot(1,2,2)    
    plt.imshow(derained)
    plt.title('derained')
-   plt.show()       
+   plt.show()     

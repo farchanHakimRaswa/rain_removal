@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 
 
-
-# This is a re-implementation of training code of this paper:
-# X. Fu, J. Huang, X. Ding, Y. Liao and J. Paisley. “Clearing the Skies: A deep network architecture for single-image rain removal”, 
-# IEEE Transactions on Image Processing, vol. 26, no. 6, pp. 2944-2956, 2017.
+# This is a re-implementation of training code of our paper:
+# X. Fu, J. Huang, D. Zeng, Y. Huang, X. Ding and J. Paisley. “Removing Rain from Single Images via a Deep Detail Network”, CVPR, 2017.
 # author: Xueyang Fu (fxy@stu.xmu.edu.cn)
 
 import os
@@ -17,28 +15,33 @@ import matplotlib.pyplot as plt
 from GuidedFilter import guided_filter
 
 
+
 ##################### Select GPU device ####################################
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 ############################################################################
 
 tf.reset_default_graph()
 
 ##################### Network parameters ###################################
-num_feature = 512            # number of feature maps
+num_feature = 16             # number of feature maps
 num_channels = 3             # number of input's channels 
 patch_size = 64              # patch size 
-learning_rate = 1e-3         # learning rate
-iterations = int(2e5)        # iterations
-batch_size = 10              # batch size
-save_model_path = "/content/rain_removal/model/" # saved model's path
-model_name = 'model-iter'   # saved model's name
+KernelSize = 3               # kernel size 
+learning_rate = 0.1          # learning rate
+iterations = int(2.1*1e5)    # iterations
+batch_size = 20              # batch size
+save_model_path = "./model/" # saved model's path
+model_name = 'model-epoch'   # saved model's name
 ############################################################################
 
-input_path = "/content/rain_removal/TrainData/input/"    # the path of training data
-gt_path = "/content/rain_removal/TrainData/label/"       # the path of training label
+
+input_path = "./TrainData/input/"    # the path of rainy images
+gt_path = "./TrainData/label/"       # the path of ground truth
 
 
-
+input_files = os.listdir(input_path)
+gt_files = os.listdir(gt_path) 
+ 
 # randomly select image patches
 def _parse_function(filename, label):  
      
@@ -57,23 +60,54 @@ def _parse_function(filename, label):
   return rainy, label 
 
 
-# DerainNet
-def inference(images):
-    with tf.variable_scope('DerainNet', reuse=tf.AUTO_REUSE): 
-      
-        base = guided_filter(images,images, 15, 1, nhwc=True) # using guided filter for obtaining base layer
-        detail = images - base   # detail layer
-        
-        conv1  = tf.layers.conv2d(detail, num_feature, 16, padding="valid", activation = tf.nn.relu)
-        conv2  = tf.layers.conv2d(conv1, num_feature, 1, padding="valid", activation = tf.nn.relu)
-        output = tf.layers.conv2d_transpose(conv2, num_channels, 8, strides = 1, padding="valid")
 
-    return output, base
+
+# network structure
+def inference(images, is_training):
+    regularizer = tf.contrib.layers.l2_regularizer(scale = 1e-10)
+    initializer = tf.contrib.layers.xavier_initializer()
+
+    base = guided_filter(images, images, 15, 1, nhwc=True) # using guided filter for obtaining base layer
+    detail = images - base   # detail layer
+
+   #  layer 1
+    with tf.variable_scope('layer_1'):
+         output = tf.layers.conv2d(detail, num_feature, KernelSize, padding = 'same', kernel_initializer = initializer, 
+                                   kernel_regularizer = regularizer, name='conv_1')
+         output = tf.layers.batch_normalization(output, training=is_training, name='bn_1')
+         output_shortcut = tf.nn.relu(output, name='relu_1')
+  
+   #  layers 2 to 25
+    for i in range(12):
+        with tf.variable_scope('layer_%d'%(i*2+2)):	
+             output = tf.layers.conv2d(output_shortcut, num_feature, KernelSize, padding='same', kernel_initializer = initializer, 
+                                       kernel_regularizer = regularizer, name=('conv_%d'%(i*2+2)))
+             output = tf.layers.batch_normalization(output, training=is_training, name=('bn_%d'%(i*2+2)))	
+             output = tf.nn.relu(output, name=('relu_%d'%(i*2+2)))
+
+
+        with tf.variable_scope('layer_%d'%(i*2+3)): 
+             output = tf.layers.conv2d(output, num_feature, KernelSize, padding='same', kernel_initializer = initializer,
+                                       kernel_regularizer = regularizer, name=('conv_%d'%(i*2+3)))
+             output = tf.layers.batch_normalization(output, training=is_training, name=('bn_%d'%(i*2+3)))
+             output = tf.nn.relu(output, name=('relu_%d'%(i*2+3)))
+
+        output_shortcut = tf.add(output_shortcut, output)   # shortcut
+
+   # layer 26
+    with tf.variable_scope('layer_26'):
+         output = tf.layers.conv2d(output_shortcut, num_channels, KernelSize, padding='same',   kernel_initializer = initializer, 
+                                   kernel_regularizer = regularizer, name='conv_26')
+         neg_residual = tf.layers.batch_normalization(output, training=is_training, name='bn_26')
+
+    final_out = tf.add(images, neg_residual)
+
+    return final_out
+
   
 
 
-if __name__ == '__main__':
-
+if __name__ == '__main__':   
    RainName = os.listdir(input_path)
    for i in range(len(RainName)):
       RainName[i] = input_path + RainName[i]
@@ -90,68 +124,82 @@ if __name__ == '__main__':
    dataset = dataset.batch(batch_size).repeat()  
    iterator = dataset.make_one_shot_iterator()
    
-   rainy, labels = iterator.get_next()  
-     
-   details_label = labels - guided_filter(labels, labels, 15, 1, nhwc=True)
-   details_label = details_label[:, 4:patch_size-4, 4:patch_size-4, :] # output size 56
-  
-   details_output, _ = inference(rainy)
-  
-   loss = tf.reduce_mean(tf.square( details_label - details_output ))  # MSE loss
+   rainy, labels = iterator.get_next()     
    
+   
+   outputs = inference(rainy, is_training = True)
+   loss = tf.reduce_mean(tf.square(labels - outputs))    # MSE loss
 
-   all_vars = tf.trainable_variables() 
-   g_optim = tf.train.AdamOptimizer(learning_rate).minimize(loss, var_list = all_vars) # optimizer
+   
+   lr_ = learning_rate
+   lr = tf.placeholder(tf.float32 ,shape = [])  
+
+   update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+   with tf.control_dependencies(update_ops):
+        train_op =  tf.train.MomentumOptimizer(lr, 0.9).minimize(loss) 
+
+   
+   all_vars = tf.trainable_variables()   
+   g_list = tf.global_variables()
+   bn_moving_vars = [g for g in g_list if 'moving_mean' in g.name]
+   bn_moving_vars += [g for g in g_list if 'moving_variance' in g.name]
+   all_vars += bn_moving_vars
    print("Total parameters' number: %d" %(np.sum([np.prod(v.get_shape().as_list()) for v in all_vars])))  
-   saver = tf.train.Saver(var_list = all_vars, max_to_keep = 5)
-
-   config = tf.ConfigProto()
-   config.gpu_options.allow_growth = True
-  
-
-   init =  tf.group(tf.global_variables_initializer(), 
-                    tf.local_variables_initializer())
+   saver = tf.train.Saver(var_list=all_vars, max_to_keep=5)
    
-   with tf.Session(config=config) as sess:
-       
+   
+   config = tf.ConfigProto()
+   config.gpu_options.per_process_gpu_memory_fraction = 0.8 # GPU setting
+   config.gpu_options.allow_growth = True
+   init =  tf.group(tf.global_variables_initializer(), 
+                         tf.local_variables_initializer())  
+    
+   with tf.Session(config=config) as sess:      
       with tf.device('/gpu:0'): 
-        sess.run(init)	
-        tf.get_default_graph().finalize()     
-                
-        if tf.train.get_checkpoint_state(save_model_path):   # load previous trained model 
-               ckpt = tf.train.latest_checkpoint(save_model_path)
-               saver.restore(sess, ckpt)  
-               ckpt_num = re.findall(r'(\w*[0-9]+)\w*',ckpt)
-               start_point = int(ckpt_num[-1]) + 1 
-               print("Load success")
-       
-        else:  # re-training when no models found
-               start_point = 0   
-               print("re-training")
-
-
-        check_data, check_label = sess.run([rainy, labels])
-        print("Check patch pair:")  
-        plt.subplot(1,2,1)     
-        plt.imshow(check_data[0,:,:,:])
-        plt.title('input')         
-        plt.subplot(1,2,2)    
-        plt.imshow(check_label[0,:,:,:])
-        plt.title('ground truth')        
-        plt.show()
-
-        start = time.time()  
-
-        for j in range(start_point, iterations):   # iterations
+            sess.run(init)
+            tf.get_default_graph().finalize()
             
-            _,Training_Loss = sess.run([g_optim,loss]) # training
-            print('[CHECK POINT ' + str(j))
-            if np.mod(j+1,100) == 0 and j != 0: # save the model every 100 iterations    
-               end = time.time()
-               print ('%d / %d iteraions, Training Loss  = %.4f, runtime = %.1f s' % (j+1, iterations, Training_Loss, (end - start)))         
-               save_path_full = os.path.join(save_model_path, model_name)
-               saver.save(sess, save_path_full, global_step = j+1, write_meta_graph=False)
-               start = time.time()      
-               
-        print('Training is finished.')
+            if tf.train.get_checkpoint_state('./model/'):   # load previous trained models
+               ckpt = tf.train.latest_checkpoint('./model/')
+               saver.restore(sess, ckpt)
+               ckpt_num = re.findall(r'(\w*[0-9]+)\w*',ckpt)
+               start_point = int(ckpt_num[0]) + 1   
+               print("successfully load previous model")
+       
+            else:   # re-training if no previous trained models
+               start_point = 0    
+               print("re-training")
+    
+    
+            check_data, check_label = sess.run([rainy, labels])
+            print("Check patch pair:")  
+            plt.subplot(1,2,1)     
+            plt.imshow(check_data[0,:,:,:])
+            plt.title('input')         
+            plt.subplot(1,2,2)    
+            plt.imshow(check_label[0,:,:,:])
+            plt.title('ground truth')        
+            plt.show()
+    
+    
+            start = time.time()  
+            
+            for j in range(start_point,iterations):   #  iterations
+                if j+1 > int(1e5):
+                    lr_ = learning_rate*0.1
+                if j+1 > int(2e5):
+                    lr_ = learning_rate*0.01             
+                    
+    
+                _,Training_Loss = sess.run([train_op,loss], feed_dict={lr: lr_}) # training
+          
+                if np.mod(j+1,100) == 0 and j != 0: # save the model every 100 iterations
+                   end = time.time()              
+                   print ('%d / %d iteraions, learning rate = %.3f, Training Loss = %.4f, runtime = %.1f s' 
+                          % (j+1, iterations, lr_, Training_Loss, (end - start)))                  
+                   save_path_full = os.path.join(save_model_path, model_name) # save model
+                   saver.save(sess, save_path_full, global_step = j+1, write_meta_graph=False)
+                   start = time.time()
+                   
+            print('Training is finished.')
    sess.close()  
