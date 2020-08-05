@@ -30,13 +30,13 @@ KernelSize = 3               # kernel size
 learning_rate = 0.1          # learning rate
 iterations = 10000   # iterations
 batch_size = 20              # batch size
-save_model_path = "/content/rain_removal/model/" # saved model's path
+save_model_path = "./model/" # saved model's path
 model_name = 'model'   # saved model's name
 ############################################################################
 
 
-input_path = "/content/rain_removal/TrainData/input/"    # the path of rainy images
-gt_path = "/content/rain_removal/TrainData/label/"       # the path of ground truth
+input_path = "./TrainData/input/"    # the path of rainy images
+gt_path = "./TrainData/label/"       # the path of ground truth
 
 
 input_files = os.listdir(input_path)
@@ -130,7 +130,6 @@ if __name__ == '__main__':
    outputs = inference(rainy, is_training = True)
    loss = tf.reduce_mean(tf.square(labels - outputs))    # MSE loss
 
-   
    lr_ = learning_rate
    lr = tf.placeholder(tf.float32 ,shape = [])  
 

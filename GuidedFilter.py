@@ -76,7 +76,7 @@ def guided_filter(x, y, r, eps=1e-8, nhwc=False):
     mean_b = box_filter(b, r) / N
 
     output = mean_A * x + mean_b
-
+    
     if nhwc:
         output = tf.transpose(output, [0, 2, 3, 1])
 

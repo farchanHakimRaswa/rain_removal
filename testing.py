@@ -22,12 +22,12 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "0"  # select GPU device
 
 tf.reset_default_graph()
 
-model_path = '/content/rain_removal/model/'
-pre_trained_model_path = '/content/rain_removal/model/trained/model'
+model_path = './model/'
+pre_trained_model_path = './model/trained/model-5500'
 
 
-img_path = '/content/rain_removal/TestData/input/' # the path of testing images
-results_path = '/content/rain_removal/TestData/results/' # the path of de-rained images
+img_path = './TestData/input/' # the path of testing images
+results_path = './TestData/results/' # the path of de-rained images
 
 
 
